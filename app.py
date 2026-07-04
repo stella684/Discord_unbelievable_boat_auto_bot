@@ -9,29 +9,26 @@ import socket
 import urllib.parse
 import os
 
-# ========== CONFIG – EDIT THESE ==========
-TOKEN = "YOUR_TOKEN_HERE"               # Put your Discord user token here
-CHANNEL_ID = "1512956231919337482"      # Channel ID to send to
+TOKEN = "YOUR_TOKEN_HERE"
+CHANNEL_ID = "1512956231919337482"
 
-COMMANDS = [                            # Main loop commands (run every 5 min)
+COMMANDS = [
     "!crime",
     "!dep all"
 ]
 
-SCHEDULED_COMMANDS = {                  # Background scheduled commands
-    "!work": 60,                        # every 60 seconds
-    "!slut": 120,                       # every 120 seconds
+SCHEDULED_COMMANDS = {
+    "!work": 60,
+    "!slut": 120,
 }
 
-DELAY_BETWEEN = 0.0005                  # seconds between commands in main loop
-SLEEP_CYCLE = 300                       # seconds between main cycles (5 min)
-NETWORK_CHECK_INTERVAL = 5              # retry interval when network is down
-DASHBOARD_PORT = 8080                   # web dashboard port
-# ==========================================
+DELAY_BETWEEN = 0.0005
+SLEEP_CYCLE = 300
+NETWORK_CHECK_INTERVAL = 5
+DASHBOARD_PORT = 8080
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Shared status for dashboard
 STATUS = {
     "started_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     "network": "checking",
@@ -41,10 +38,8 @@ STATUS = {
 }
 STATUS_LOCK = threading.Lock()
 
-
 def timestamp():
     return f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}]"
-
 
 def log_to_status(message, command=None, success=None):
     entry = {
@@ -61,7 +56,6 @@ def log_to_status(message, command=None, success=None):
             STATUS["commands"][command]["last_sent"] = entry["time"]
             STATUS["commands"][command]["last_success"] = success
             STATUS["commands"][command]["count"] += 1
-
 
 def wait_for_network():
     while True:
@@ -85,7 +79,6 @@ def wait_for_network():
                 STATUS["network"] = "unknown"
             print(f"{timestamp()} ⚠ Discord unreachable. Retrying...")
             time.sleep(NETWORK_CHECK_INTERVAL)
-
 
 def send_message(conn, content, headers, retry_count=0):
     max_retries = 3
@@ -142,7 +135,6 @@ def send_message(conn, content, headers, retry_count=0):
         log_to_status(f"⚠ {str(e)[:50]}", content, False)
         return False
 
-
 def send_command_periodically(command, interval, headers):
     print(f"{timestamp()} 🔄 Scheduler started: '{command}' every {interval}s")
     log_to_status(f"🔄 Started: {command} ({interval}s)", command, None)
@@ -152,7 +144,6 @@ def send_command_periodically(command, interval, headers):
         send_message(conn, command, headers)
         conn.close()
         time.sleep(interval)
-
 
 class DashboardHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
@@ -210,12 +201,10 @@ class DashboardHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(json.dumps(status_copy).encode())
 
-
 def run_dashboard():
     server = HTTPServer(('0.0.0.0', DASHBOARD_PORT), DashboardHandler)
     print(f"{timestamp()} 🌐 Dashboard: http://localhost:{DASHBOARD_PORT}")
     server.serve_forever()
-
 
 def main():
     print(f"{timestamp()} Starting auto‑sender")
@@ -293,7 +282,6 @@ def main():
 
         print(f"{timestamp()} Main cycle complete. Sleeping {SLEEP_CYCLE//60} min...\n")
         time.sleep(SLEEP_CYCLE)
-
 
 if __name__ == "__main__":
     main()
