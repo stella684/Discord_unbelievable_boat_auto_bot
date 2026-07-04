@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discord Auto-Sender Dashboard</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-left">
+                <h1>🤖 Discord Auto-Sender</h1>
+                <span class="version">v2.0</span>
+            </div>
+            <div class="status-badge" id="networkStatus">
+                <span class="dot"></span>
+                Loading...
+            </div>
+        </header>
+
+        <section class="stats-grid">
+            <div class="stat-card">
+                <span class="label">Started</span>
+                <span class="value" id="startedAt">-</span>
+            </div>
+            <div class="stat-card">
+                <span class="label">Token Status</span>
+                <span class="value" id="tokenStatus">-</span>
+            </div>
+            <div class="stat-card">
+                <span class="label">Total Commands</span>
+                <span class="value" id="totalSent">0</span>
+            </div>
+            <div class="stat-card">
+                <span class="label">Uptime</span>
+                <span class="value" id="uptime">0s</span>
+            </div>
+        </section>
+
+        <section class="commands-section">
+            <h2>📊 Command Status</h2>
+            <div id="commandGrid" class="command-grid"></div>
+        </section>
+
+        <section class="logs-section">
+            <h2>📋 Recent Activity</h2>
+            <div id="logContainer" class="log-container"></div>
+        </section>
+    </div>
+
+    <script>
+        const startTime = Date.now();
+
+        function fetchStatus() {
+            fetch('/status')
+                .then(res => res.json())
+                .then(data => {
+                    const netBadge = document.getElementById('networkStatus');
+                    const dot = netBadge.querySelector('.dot');
+                    if (data.network === 'online') {
+                        netBadge.className = 'status-badge online';
+                        dot.className = 'dot online';
+                        netBadge.innerHTML = '<span class="dot online"></span> Online';
+                    } else if (data.network === 'offline') {
+                        netBadge.className = 'status-badge offline';
+                        dot.className = 'dot offline';
+                        netBadge.innerHTML = '<span class="dot offline"></span> Offline';
+                    } else {
+                        netBadge.className = 'status-badge unknown';
+                        dot.className = 'dot unknown';
+                        netBadge.innerHTML = '<span class="dot unknown"></span> Unknown';
+                    }
+
+                    document.getElementById('startedAt').textContent = data.started_at || '-';
+                    document.getElementById('tokenStatus').textContent = data.token_valid ? '✅ Valid' : '❌ Invalid';
+
+                    let total = 0;
+                    Object.values(data.commands).forEach(cmd => total += cmd.count || 0);
+                    document.getElementById('totalSent').textContent = total;
+
+                    const uptime = Math.floor((Date.now() - startTime) / 1000);
+                    const hours = Math.floor(uptime / 3600);
+                    const minutes = Math.floor((uptime % 3600) / 60);
+                    const seconds = uptime % 60;
+                    document.getElementById('uptime').textContent = 
+                        hours > 0 ? `${hours}h ${minutes}m` :
+                        minutes > 0 ? `${minutes}m ${seconds}s` :
+                        `${seconds}s`;
+
+                    const grid = document.getElementById('commandGrid');
+                    grid.innerHTML = '';
+                    const commandKeys = Object.keys(data.commands);
+                    if (commandKeys.length === 0) {
+                        grid.innerHTML = '<div class="empty-state">No commands registered</div>';
+                    } else {
+                        commandKeys.forEach(name => {
+                            const info = data.commands[name];
+                            const card = document.createElement('div');
+                            card.className = 'command-card';
+                            const statusClass = info.last_success === true ? 'ok' : 
+                                               info.last_success === false ? 'fail' : 'waiting';
+                            const statusIcon = info.last_success === true ? '✅' :
+                                             info.last_success === false ? '❌' : '⏳';
+                            card.innerHTML = `
+                                <div class="cmd-name">${name}</div>
+                                <div class="cmd-last">Last: ${info.last_sent || 'never'}</div>
+                                <div class="cmd-count">Sent: ${info.count || 0}</div>
+                                <div class="cmd-status ${statusClass}">${statusIcon}</div>
+                            `;
+                            grid.appendChild(card);
+                        });
+                    }
+
+                    const logDiv = document.getElementById('logContainer');
+                    logDiv.innerHTML = '';
+                    if (data.recent_log.length === 0) {
+                        logDiv.innerHTML = '<div class="empty-state">No activity yet</div>';
+                    } else {
+                        data.recent_log.slice().reverse().forEach(entry => {
+                            const div = document.createElement('div');
+                            const cls = entry.success === true ? 'ok' : 
+                                       entry.success === false ? 'fail' : 'info';
+                            div.className = `log-entry ${cls}`;
+                            div.textContent = `[${entry.time}] ${entry.message}`;
+                            logDiv.appendChild(div);
+                        });
+                    }
+                })
+                .catch(() => {
+                    const netBadge = document.getElementById('networkStatus');
+                    netBadge.className = 'status-badge unknown';
+                    netBadge.innerHTML = '<span class="dot unknown"></span> Error';
+                });
+        }
+
+        fetchStatus();
+        setInterval(fetchStatus, 5000);
+    </script>
+</body>
+</html>
