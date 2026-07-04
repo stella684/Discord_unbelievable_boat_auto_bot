@@ -141,4 +141,4 @@ MIT – use it, change it, share it.
 
 ---
 
-**P.S.** This whole thing was vibe‑coded – if it breaks, just restart it. 😎
+**P.S.** website UI/UX + HTML is vibecoded, I'm lazy
